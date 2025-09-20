@@ -1,0 +1,105 @@
+import org.json.JSONObject;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
+public class HashiraPolynomialSolver {
+
+    public static void main(String[] args) {
+        // The JSON input from the second test case
+        String jsonInput = """
+        {
+          "keys": {
+            "n": 10,
+            "k": 7
+          },
+          "1": {
+            "base": "6",
+            "value": "13444211440455345511"
+          },
+          "2": {
+            "base": "15",
+            "value": "aed7015a346d635"
+          },
+          "3": {
+            "base": "15",
+            "value": "6aeeb69631c227c"
+          },
+          "4": {
+            "base": "16",
+            "value": "e1b5e05623d881f"
+          },
+          "5": {
+            "base": "8",
+            "value": "316034514573652620673"
+          },
+          "6": {
+            "base": "3",
+            "value": "2122212201122002221120200210011020220200"
+          },
+          "7": {
+            "base": "3",
+            "value": "20120221122211000100210021102001201112121"
+          }
+        }
+        """;
+
+        // Solve the polynomial and get the coefficients
+        List<BigInteger> coefficients = solvePolynomial(jsonInput);
+
+        // Print the resulting coefficients
+        System.out.println("Polynomial Coefficients (from highest degree to constant):");
+        for (int i = 0; i < coefficients.size(); i++) {
+            System.out.printf("x^%d: %s%n", coefficients.size() - 1 - i, coefficients.get(i).toString());
+        }
+    }
+
+    public static List<BigInteger> solvePolynomial(String jsonString) {
+        // Step 1: Parse the JSON input
+        JSONObject inputJson = new JSONObject(jsonString);
+        JSONObject keys = inputJson.getJSONObject("keys");
+        int k = keys.getInt("k"); // The number of roots we need to use
+
+        // Step 2: Extract and convert the first 'k' roots to BigInteger (base 10)
+        List<BigInteger> roots = new ArrayList<>();
+        for (int i = 1; i <= k; i++) {
+            JSONObject rootData = inputJson.getJSONObject(String.valueOf(i));
+            int base = Integer.parseInt(rootData.getString("base"));
+            String value = rootData.getString("value");
+            
+            // BigInteger constructor handles conversion from any base
+            roots.add(new BigInteger(value, base));
+        }
+
+        // Step 3: Iteratively build the polynomial coefficients
+        // We start with the polynomial P(x) = 1, so its coefficient is [1]
+        List<BigInteger> coefficients = new ArrayList<>();
+        coefficients.add(BigInteger.ONE); 
+
+        // For each root 'r', multiply the current polynomial by (x - r)
+        for (BigInteger root : roots) {
+            // The new polynomial will have one higher degree
+            List<BigInteger> newCoefficients = new ArrayList<>(coefficients.size() + 1);
+
+            // The highest-degree coefficient is always 1 (from multiplying by 'x')
+            newCoefficients.add(coefficients.get(0));
+
+            // Calculate the middle coefficients
+            // new_coeff[i] = old_coeff[i] - root * old_coeff[i-1]
+            for (int i = 1; i < coefficients.size(); i++) {
+                BigInteger term = root.multiply(coefficients.get(i - 1));
+                newCoefficients.add(coefficients.get(i).subtract(term));
+            }
+            
+            // Calculate the new constant term (the last coefficient)
+            // It's the old constant term multiplied by -r
+            BigInteger lastTerm = root.multiply(coefficients.get(coefficients.size() - 1));
+            newCoefficients.add(BigInteger.ZERO.subtract(lastTerm));
+            
+            // Update the coefficients for the next iteration
+            coefficients = newCoefficients;
+        }
+
+        return coefficients;
+    }
+}
